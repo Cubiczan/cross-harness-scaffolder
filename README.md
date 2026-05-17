@@ -236,6 +236,22 @@ The persistence blueprint is designed for repeated harness passes without transc
 
 This lets teams resume a run from compact state while keeping full payloads auditable.
 
+## Infrastructure Backends
+
+The package includes dependency-light infrastructure seams:
+
+- `SQLiteStore` for local runs and test fixtures.
+- `PostgresStore` for shared production session state.
+- `CockroachStore` for distributed state with serializable retry guidance.
+- `LocalExecutionBackend` for trusted local or CI commands.
+- `SuperserveBackend` for SuperServe-style Firecracker microVM validation.
+
+See [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md).
+
+## Repo Discovery Intake
+
+Use [github_repo_classifier](https://github.com/chriscarrollsmith/github_repo_classifier) as a separate discovery pipeline to find underrated harness, database, sandbox, and developer-tooling repos. Cross-Harness Scaffolder records the leverage matrix in [docs/REPO_LEVERAGE_MATRIX.md](docs/REPO_LEVERAGE_MATRIX.md) and keeps attribution in [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+
 ## Safety Model
 
 Cross-Harness Scaffolder is a coordination and validation scaffold. It does not grant tools, spend money, sign contracts, push code, or run external APIs on its own.
@@ -284,4 +300,5 @@ Current local state:
 - Python package scaffolded.
 - Tests passing.
 - Consensus Hardening review included.
-- Ready to push to Codeberg and GitHub once remotes and PATs are provided.
+- PostgreSQL, CockroachDB, SQLite, local execution, and SuperServe adapter seams included.
+- Published to Codeberg and GitHub mirrors where credentials are configured.
