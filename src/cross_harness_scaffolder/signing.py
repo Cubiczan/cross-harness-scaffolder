@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+from base64 import b64decode, b64encode
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +16,7 @@ from .core import ScaffoldArtifact, ScaffoldPackage, content_hash, estimate_toke
 MANIFEST_PATH = "cross-harness/bundle_manifest.json"
 MANIFEST_VERSION = "chs-bundle-manifest-v1"
 SIGNATURE_ALGORITHM = "hmac_sha256"
+PUBLIC_KEY_SIGNATURE_ALGORITHM = "ed25519"
 
 
 def build_bundle_manifest(
@@ -87,6 +89,31 @@ def sign_bundle_manifest(
     return signed
 
 
+def sign_bundle_manifest_public_key(
+    manifest: dict[str, Any],
+    private_key_pem: str | bytes,
+    *,
+    key_id: str,
+    password: str | bytes | None = None,
+) -> dict[str, Any]:
+    """Sign a manifest with an Ed25519 private key when cryptography is installed."""
+
+    serialization, ed25519 = _cryptography_modules()
+    key_bytes = private_key_pem.encode("utf-8") if isinstance(private_key_pem, str) else private_key_pem
+    password_bytes = password.encode("utf-8") if isinstance(password, str) else password
+    private_key = serialization.load_pem_private_key(key_bytes, password=password_bytes)
+    if not isinstance(private_key, ed25519.Ed25519PrivateKey):
+        raise ValueError("private key must be an Ed25519 PEM key")
+    signed = dict(manifest)
+    signature = private_key.sign(_canonical_json(signed).encode("ascii"))
+    signed["signature"] = {
+        "algorithm": PUBLIC_KEY_SIGNATURE_ALGORITHM,
+        "key_id": key_id,
+        "value": b64encode(signature).decode("ascii"),
+    }
+    return signed
+
+
 def verify_bundle_manifest_signature(manifest: dict[str, Any], secret: str) -> bool:
     signature = manifest.get("signature")
     if not isinstance(signature, dict):
@@ -98,6 +125,29 @@ def verify_bundle_manifest_signature(manifest: dict[str, Any], secret: str) -> b
     unsigned.pop("signature", None)
     expected = hmac.new(secret.encode("utf-8"), _canonical_json(unsigned).encode("ascii"), hashlib.sha256).hexdigest()
     return hmac.compare_digest(value, expected)
+
+
+def verify_bundle_manifest_public_key(manifest: dict[str, Any], public_key_pem: str | bytes) -> bool:
+    serialization, ed25519 = _cryptography_modules()
+    signature = manifest.get("signature")
+    if not isinstance(signature, dict):
+        return False
+    if signature.get("algorithm") != PUBLIC_KEY_SIGNATURE_ALGORITHM:
+        return False
+    value = signature.get("value")
+    if not isinstance(value, str):
+        return False
+    key_bytes = public_key_pem.encode("utf-8") if isinstance(public_key_pem, str) else public_key_pem
+    public_key = serialization.load_pem_public_key(key_bytes)
+    if not isinstance(public_key, ed25519.Ed25519PublicKey):
+        raise ValueError("public key must be an Ed25519 PEM key")
+    unsigned = dict(manifest)
+    unsigned.pop("signature", None)
+    try:
+        public_key.verify(b64decode(value.encode("ascii")), _canonical_json(unsigned).encode("ascii"))
+    except Exception:
+        return False
+    return True
 
 
 def attach_bundle_manifest(package: ScaffoldPackage, *, signer: str = "cross-harness-scaffolder") -> ScaffoldPackage:
@@ -116,6 +166,23 @@ def sign_scaffold_package(
     return _replace_manifest(package, manifest)
 
 
+def sign_scaffold_package_public_key(
+    package: ScaffoldPackage,
+    private_key_pem: str | bytes,
+    *,
+    key_id: str,
+    signer: str = "cross-harness-scaffolder",
+    password: str | bytes | None = None,
+) -> ScaffoldPackage:
+    manifest = sign_bundle_manifest_public_key(
+        build_bundle_manifest(package, signer=signer),
+        private_key_pem,
+        key_id=key_id,
+        password=password,
+    )
+    return _replace_manifest(package, manifest)
+
+
 def write_signed_directory_manifest(
     root: str | Path,
     output: str | Path,
@@ -125,6 +192,27 @@ def write_signed_directory_manifest(
     signer: str = "cross-harness-scaffolder",
 ) -> Path:
     manifest = sign_bundle_manifest(build_directory_manifest(root, signer=signer), secret, key_id=key_id)
+    target = Path(output)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="ascii")
+    return target
+
+
+def write_public_key_signed_directory_manifest(
+    root: str | Path,
+    output: str | Path,
+    private_key_pem: str | bytes,
+    *,
+    key_id: str,
+    signer: str = "cross-harness-scaffolder",
+    password: str | bytes | None = None,
+) -> Path:
+    manifest = sign_bundle_manifest_public_key(
+        build_directory_manifest(root, signer=signer),
+        private_key_pem,
+        key_id=key_id,
+        password=password,
+    )
     target = Path(output)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="ascii")
@@ -163,3 +251,12 @@ def _canonical_json(value: dict[str, Any]) -> str:
     payload = dict(value)
     payload.pop("signature", None)
     return json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+
+
+def _cryptography_modules():
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ed25519
+    except ImportError as exc:  # pragma: no cover - depends on optional extra.
+        raise RuntimeError("Install the crypto extra for Ed25519 signing: pip install .[crypto]") from exc
+    return serialization, ed25519

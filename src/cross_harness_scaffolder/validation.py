@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .core import CrossHarnessLayer, get_harness_profile
+from .schemas import SESSION_CONFIG_SCHEMA
 from .session_config import load_mapping, session_from_mapping
 
 
@@ -48,11 +49,15 @@ class ConfigValidationResult:
         return "\n".join(lines)
 
 
-def validate_session_config(path: str | Path) -> ConfigValidationResult:
-    return validate_session_config_mapping(load_mapping(path))
+def validate_session_config(path: str | Path, *, use_json_schema: bool = False) -> ConfigValidationResult:
+    return validate_session_config_mapping(load_mapping(path), use_json_schema=use_json_schema)
 
 
-def validate_session_config_mapping(data: dict[str, Any]) -> ConfigValidationResult:
+def validate_session_config_mapping(
+    data: dict[str, Any],
+    *,
+    use_json_schema: bool = False,
+) -> ConfigValidationResult:
     issues: list[ConfigValidationIssue] = []
 
     def add(path: str, message: str, severity: str = "error") -> None:
@@ -77,6 +82,9 @@ def validate_session_config_mapping(data: dict[str, Any]) -> ConfigValidationRes
     for key in ("title", "origin", "partner", "dossier", "foundation", "diagnostics"):
         if key not in data:
             add(key, "is required")
+
+    if use_json_schema:
+        issues.extend(validate_mapping_against_json_schema(data))
 
     if "title" in data and not isinstance(data["title"], str):
         add("title", "must be a string")
@@ -151,6 +159,34 @@ def validate_session_config_mapping(data: dict[str, Any]) -> ConfigValidationRes
                     add("foundation", error)
 
     return ConfigValidationResult(issues=tuple(issues))
+
+
+def json_schema_validator_available() -> bool:
+    try:
+        import jsonschema  # type: ignore  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def validate_mapping_against_json_schema(data: dict[str, Any]) -> tuple[ConfigValidationIssue, ...]:
+    try:
+        from jsonschema import Draft202012Validator  # type: ignore
+    except ImportError:
+        return (
+            ConfigValidationIssue(
+                path="json_schema",
+                message="jsonschema is not installed; install the schema extra to enable JSON Schema validation",
+                severity="warning",
+            ),
+        )
+
+    validator = Draft202012Validator(SESSION_CONFIG_SCHEMA)
+    issues = []
+    for error in sorted(validator.iter_errors(data), key=lambda item: list(item.path)):
+        path = ".".join(str(part) for part in error.path) or "$"
+        issues.append(ConfigValidationIssue(path=f"json_schema.{path}", message=error.message, severity="error"))
+    return tuple(issues)
 
 
 def _validate_profile(profile: dict[str, Any], path: str, add) -> None:

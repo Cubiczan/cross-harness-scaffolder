@@ -91,6 +91,12 @@ From the repo root:
 python -m pip install -e .
 ```
 
+Optional extras:
+
+```bash
+python -m pip install -e ".[yaml,schema,crypto]"
+```
+
 Run tests:
 
 ```bash
@@ -103,7 +109,7 @@ The package installs a `chs` command for repeatable runs from YAML or JSON:
 
 ```bash
 chs create-session --config examples/database_design.yaml --out .cross-harness-runs/database-design --payload-id ABC123
-chs validate-config --config examples/database_design.yaml
+chs validate-config --config examples/database_design.yaml --json-schema
 chs consensus-report --config examples/database_design.yaml --output .cross-harness-runs/database-design/report.md
 chs export-schemas --out schemas
 CHS_SIGNING_KEY="change-me" chs sign-bundle --bundle .cross-harness-runs/database-design/cross-harness --key-id local-release
@@ -114,10 +120,11 @@ More detail: [docs/CLI_AND_EXAMPLES.md](docs/CLI_AND_EXAMPLES.md).
 Commands:
 
 - `create-session` builds the complete scaffold bundle from a session config.
-- `validate-config` checks required fields, harness profile names, diagnostics, and foundation limits before bundle creation.
+- `validate-config` checks required fields, harness profile names, diagnostics, and foundation limits before bundle creation. Add `--json-schema` to also run the exported JSON Schema when `jsonschema` is installed.
 - `consensus-report` runs a CI-ready Consensus Hardening report and exits nonzero if critical gates fail.
 - `export-schemas` writes JSON schemas for session configs, packet objects, and compact state.
-- `sign-bundle` writes a signed HMAC-SHA256 release-gate manifest for an existing bundle.
+- `sign-bundle` writes a signed release-gate manifest for an existing bundle. It supports HMAC-SHA256 by default and Ed25519 public-key signing with the `crypto` extra.
+- `verify-manifest` verifies HMAC or Ed25519 signatures.
 
 Example session bundles live in:
 
@@ -245,7 +252,7 @@ response = adapter.receive_response(session_id="run-001")
 
 `FileHarnessAdapter` is intentionally simple: it writes `inbox_packet.md` and reads `outbox_response.md`. Native adapters for Codex, Claude Code, Cursor, Copilot, Antigravity, GLM 5, DeepSeek, Qwen, and SuperServe can use the same interface.
 
-`CommandHarnessAdapter` supports selected local CLI harnesses where the permission boundary is explicit: no shell, packet on stdin, captured stdout, caller-owned command tuple, timeout, and byte cap. Built-in adapter specs document stable boundaries for file handoff, Codex CLI, Claude Code CLI, Aider CLI, and SuperServe execution.
+`CommandHarnessAdapter` supports selected local CLI harnesses where the permission boundary is explicit: no shell, packet on stdin, captured stdout, caller-owned command tuple, timeout, and byte cap. Built-in adapter specs document stable boundaries for file handoff, Codex CLI, Claude Code CLI, Aider CLI, and SuperServe execution, plus gated specs for Cursor, Continue, GitHub Copilot, Sourcegraph Cody, GLM 5, DeepSeek, and Qwen. Gated specs are not auto-enabled; teams should promote them only after reviewing local permissions, auth scope, and audit behavior.
 
 ## Built-In Aliases
 
@@ -299,6 +306,21 @@ The package includes dependency-light infrastructure seams:
 
 See [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md).
 
+## Signing Modes
+
+Default HMAC signing:
+
+```bash
+CHS_SIGNING_KEY="change-me" chs sign-bundle --bundle .cross-harness-runs/database-design/cross-harness --key-id local-release
+```
+
+Ed25519 public-key signing after installing `.[crypto]`:
+
+```bash
+chs sign-bundle --mode ed25519 --bundle .cross-harness-runs/database-design/cross-harness --private-key-file keys/release-ed25519.pem --key-id release-ed25519
+chs verify-manifest --mode ed25519 --manifest .cross-harness-runs/database-design/cross-harness/bundle_manifest.json --public-key-file keys/release-ed25519.pub.pem
+```
+
 ## Repo Discovery Intake
 
 Use [github_repo_classifier](https://github.com/chriscarrollsmith/github_repo_classifier) as a separate discovery pipeline to find underrated harness, database, sandbox, and developer-tooling repos. Cross-Harness Scaffolder records the leverage matrix in [docs/REPO_LEVERAGE_MATRIX.md](docs/REPO_LEVERAGE_MATRIX.md) and keeps attribution in [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
@@ -329,6 +351,7 @@ The test suite covers:
 - requested harness profiles, including GLM 5, DeepSeek, and Qwen,
 - SuperServe as a Firecracker validation harness and execution backend seam,
 - native command adapter specs for selected harnesses,
+- gated adapter specs for additional harnesses pending local permission review,
 - alias resolution,
 - model parity,
 - payload envelopes,
@@ -336,16 +359,18 @@ The test suite covers:
 - YAML/JSON session loading,
 - CLI bundle/validate/report/schema/sign commands,
 - JSON schema exports,
+- optional JSON Schema validation via `jsonschema`,
 - signed release-gate manifests,
+- optional Ed25519 public-key signatures via `cryptography`,
 - file-based adapter handoff,
 - token-efficient package output,
 - path traversal protection.
 
 ## Roadmap
 
-- Native adapters for additional harnesses after their permission models stabilize.
-- Public-key signing option alongside current HMAC release-gate signatures.
-- Schema validation against exported JSON Schema when optional validator dependencies are installed.
+- Native adapter execution for additional gated harnesses after real permission-model review.
+- Signed manifest transparency log export.
+- JSON Schema validation command with external schema path support.
 
 ## Repository Status
 

@@ -36,6 +36,7 @@ from .core import (
 )
 from .execution import ExecutionRequest, ExecutionResult, LocalExecutionBackend, SuperserveBackend, SuperserveConfig
 from .adapters import (
+    AdapterStability,
     CommandHarnessAdapter,
     FileHarnessAdapter,
     HarnessAdapterRegistry,
@@ -43,6 +44,7 @@ from .adapters import (
     NativeAdapterSpec,
     build_command_adapter,
     native_adapter_specs,
+    stable_native_adapter_specs,
 )
 from .schemas import export_json_schemas, schema_bundle
 from .session_config import load_session, session_from_mapping
@@ -50,9 +52,13 @@ from .signing import (
     MANIFEST_PATH,
     attach_bundle_manifest,
     build_bundle_manifest,
+    sign_bundle_manifest_public_key,
     sign_bundle_manifest,
+    sign_scaffold_package_public_key,
     sign_scaffold_package,
+    verify_bundle_manifest_public_key,
     verify_bundle_manifest_signature,
+    write_public_key_signed_directory_manifest,
     write_signed_directory_manifest,
 )
 from .storage import (
@@ -67,7 +73,14 @@ from .storage import (
     build_database_config,
     cockroach_retry_delays,
 )
-from .validation import ConfigValidationIssue, ConfigValidationResult, validate_session_config, validate_session_config_mapping
+from .validation import (
+    ConfigValidationIssue,
+    ConfigValidationResult,
+    json_schema_validator_available,
+    validate_mapping_against_json_schema,
+    validate_session_config,
+    validate_session_config_mapping,
+)
 
 __all__ = [
     "CANONICAL_PROTOCOL_NAME",
@@ -110,6 +123,7 @@ __all__ = [
     "DatabaseConfig",
     "ExecutionRequest",
     "ExecutionResult",
+    "AdapterStability",
     "CommandHarnessAdapter",
     "FileHarnessAdapter",
     "HarnessAdapterRegistry",
@@ -135,8 +149,15 @@ __all__ = [
     "native_adapter_specs",
     "schema_bundle",
     "session_from_mapping",
+    "json_schema_validator_available",
+    "sign_bundle_manifest_public_key",
     "sign_bundle_manifest",
+    "sign_scaffold_package_public_key",
     "sign_scaffold_package",
+    "stable_native_adapter_specs",
+    "validate_mapping_against_json_schema",
+    "verify_bundle_manifest_public_key",
     "verify_bundle_manifest_signature",
+    "write_public_key_signed_directory_manifest",
     "write_signed_directory_manifest",
 ]

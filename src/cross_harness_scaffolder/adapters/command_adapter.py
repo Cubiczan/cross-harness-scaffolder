@@ -3,11 +3,18 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from cross_harness_scaffolder.core import HarnessProfile, ascii_only, get_harness_profile
 
 from .base import HarnessAdapterResult
+
+
+class AdapterStability(str, Enum):
+    STABLE = "stable"
+    GATED = "gated"
+    EXPERIMENTAL = "experimental"
 
 
 @dataclass(frozen=True)
@@ -17,6 +24,9 @@ class NativeAdapterSpec:
     adapter_type: str
     permission_boundary: str
     stable_surface: str
+    stability: AdapterStability = AdapterStability.STABLE
+    requires_human_approval: bool = True
+    notes: str = ""
 
 
 class CommandHarnessAdapter:
@@ -121,4 +131,89 @@ def native_adapter_specs() -> tuple[NativeAdapterSpec, ...]:
             permission_boundary="Firecracker-style sandbox client contract with network policy",
             stable_surface="create_sandbox, run_command, destroy_sandbox",
         ),
+        NativeAdapterSpec(
+            name="cursor-cli",
+            profile_name="cursor",
+            adapter_type="command",
+            permission_boundary="explicit local command tuple, stdin packet, captured stdout",
+            stable_surface="local CLI process",
+            stability=AdapterStability.GATED,
+            notes="Enable only when the local Cursor command surface is pinned and audit-reviewed.",
+        ),
+        NativeAdapterSpec(
+            name="continue-cli",
+            profile_name="continue",
+            adapter_type="command",
+            permission_boundary="explicit local command tuple, stdin packet, captured stdout",
+            stable_surface="local CLI process",
+            stability=AdapterStability.GATED,
+            notes="Continue supports multiple providers; pin provider, model, workspace, and command flags.",
+        ),
+        NativeAdapterSpec(
+            name="cline-file-handoff",
+            profile_name="cline",
+            adapter_type="filesystem",
+            permission_boundary="manual inbox/outbox files, no automated tool execution",
+            stable_surface="plain files",
+            stability=AdapterStability.STABLE,
+            notes="Use file handoff until IDE extension automation is explicitly permissioned.",
+        ),
+        NativeAdapterSpec(
+            name="roo-code-file-handoff",
+            profile_name="roo_code",
+            adapter_type="filesystem",
+            permission_boundary="manual inbox/outbox files, no automated tool execution",
+            stable_surface="plain files",
+            stability=AdapterStability.STABLE,
+            notes="Use file handoff for mode-specific Roo workflows.",
+        ),
+        NativeAdapterSpec(
+            name="copilot-cli",
+            profile_name="github_copilot",
+            adapter_type="command",
+            permission_boundary="explicit local command tuple, stdin packet, captured stdout",
+            stable_surface="local CLI process",
+            stability=AdapterStability.GATED,
+            notes="Enable only for GitHub-authenticated environments with repository scope reviewed.",
+        ),
+        NativeAdapterSpec(
+            name="sourcegraph-cody-cli",
+            profile_name="sourcegraph_cody",
+            adapter_type="command",
+            permission_boundary="explicit local command tuple, stdin packet, captured stdout",
+            stable_surface="local CLI process",
+            stability=AdapterStability.GATED,
+            notes="Pin endpoint and code graph scope before enabling.",
+        ),
+        NativeAdapterSpec(
+            name="glm-cli",
+            profile_name="glm5",
+            adapter_type="command",
+            permission_boundary="explicit local command tuple, stdin packet, captured stdout",
+            stable_surface="local provider CLI process",
+            stability=AdapterStability.GATED,
+            notes="Treat provider credentials as external to packets.",
+        ),
+        NativeAdapterSpec(
+            name="deepseek-cli",
+            profile_name="deepseek",
+            adapter_type="command",
+            permission_boundary="explicit local command tuple, stdin packet, captured stdout",
+            stable_surface="local provider CLI process",
+            stability=AdapterStability.GATED,
+            notes="Treat provider credentials as external to packets.",
+        ),
+        NativeAdapterSpec(
+            name="qwen-cli",
+            profile_name="qwen",
+            adapter_type="command",
+            permission_boundary="explicit local command tuple, stdin packet, captured stdout",
+            stable_surface="local provider CLI process",
+            stability=AdapterStability.GATED,
+            notes="Treat provider credentials as external to packets.",
+        ),
     )
+
+
+def stable_native_adapter_specs() -> tuple[NativeAdapterSpec, ...]:
+    return tuple(spec for spec in native_adapter_specs() if spec.stability == AdapterStability.STABLE)

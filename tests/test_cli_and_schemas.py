@@ -3,17 +3,23 @@ import sys
 from pathlib import Path
 
 from cross_harness_scaffolder import (
+    AdapterStability,
     CommandHarnessAdapter,
     FileHarnessAdapter,
     HarnessAdapterRegistry,
     build_scaffold_package,
     export_json_schemas,
     get_harness_profile,
+    json_schema_validator_available,
     load_session,
     native_adapter_specs,
     schema_bundle,
+    sign_bundle_manifest_public_key,
     sign_scaffold_package,
+    sign_scaffold_package_public_key,
+    stable_native_adapter_specs,
     validate_session_config,
+    verify_bundle_manifest_public_key,
     verify_bundle_manifest_signature,
 )
 from cross_harness_scaffolder.cli import main
@@ -81,6 +87,15 @@ def test_cli_validate_config_and_reject_invalid_config(tmp_path: Path) -> None:
     assert main(["validate-config", "--config", str(config)]) == 0
     assert main(["validate-config", "--config", str(invalid), "--format", "json"]) == 1
     assert not validate_session_config(invalid).ok
+
+
+def test_cli_validate_config_with_optional_json_schema(tmp_path: Path) -> None:
+    config = _config(tmp_path / "session.json")
+    result = validate_session_config(config, use_json_schema=True)
+
+    assert result.ok
+    if not json_schema_validator_available():
+        assert any(issue.path == "json_schema" and issue.severity == "warning" for issue in result.issues)
 
 
 def test_cli_create_session_with_signed_manifest(tmp_path: Path, monkeypatch) -> None:
@@ -171,8 +186,25 @@ def test_command_harness_adapter_round_trip() -> None:
 def test_native_adapter_specs_name_permission_boundaries() -> None:
     specs = {spec.name: spec for spec in native_adapter_specs()}
 
-    assert {"file-handoff", "codex-cli", "claude-code-cli", "aider-cli", "superserve-execution"} <= set(specs)
+    assert {
+        "file-handoff",
+        "codex-cli",
+        "claude-code-cli",
+        "aider-cli",
+        "superserve-execution",
+        "cursor-cli",
+        "continue-cli",
+        "cline-file-handoff",
+        "roo-code-file-handoff",
+        "copilot-cli",
+        "sourcegraph-cody-cli",
+        "glm-cli",
+        "deepseek-cli",
+        "qwen-cli",
+    } <= set(specs)
     assert "explicit local command tuple" in specs["codex-cli"].permission_boundary
+    assert specs["continue-cli"].stability == AdapterStability.GATED
+    assert {spec.name for spec in stable_native_adapter_specs()} <= set(specs)
 
 
 def test_adapter_registry() -> None:
@@ -192,3 +224,40 @@ def test_sign_scaffold_package_verifies_manifest(tmp_path: Path) -> None:
 
     assert manifest["artifact_count"] == 8
     assert verify_bundle_manifest_signature(manifest, "secret")
+
+
+def test_public_key_signing_optional_dependency(tmp_path: Path) -> None:
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ed25519
+    except ImportError:
+        try:
+            sign_bundle_manifest_public_key({"manifest_version": "test"}, "not-a-key", key_id="ed-key")
+        except RuntimeError as exc:
+            assert "crypto extra" in str(exc)
+        else:
+            raise AssertionError("expected missing crypto extra to raise")
+        return
+
+    session = load_session(_config(tmp_path / "session.json"))
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    public_key = private_key.public_key()
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    package = sign_scaffold_package_public_key(
+        build_scaffold_package(session, payload_id="ABC123"),
+        private_pem,
+        key_id="ed-key",
+    )
+    manifest = json.loads(next(item for item in package.artifacts if item.path.endswith("bundle_manifest.json")).content)
+
+    assert manifest["signature"]["algorithm"] == "ed25519"
+    assert verify_bundle_manifest_public_key(manifest, public_pem)

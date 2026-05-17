@@ -27,10 +27,10 @@ jobs:
           python-version: "3.11"
 
       - name: Install package
-        run: python -m pip install -e ".[yaml]"
+        run: python -m pip install -e ".[yaml,schema]"
 
       - name: Validate session config
-        run: chs validate-config --config "${{ matrix.config }}"
+        run: chs validate-config --config "${{ matrix.config }}" --json-schema
 
       - name: Run Consensus Hardening report
         run: chs consensus-report --config "${{ matrix.config }}" --output "chs-report.md"

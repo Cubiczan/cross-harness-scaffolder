@@ -18,7 +18,9 @@ yaml = ["PyYAML>=6.0"]
 postgres = ["psycopg[binary]>=3.1"]
 cockroach = ["psycopg[binary]>=3.1"]
 superserve = []
-all = ["PyYAML>=6.0", "psycopg[binary]>=3.1"]
+crypto = ["cryptography>=42.0"]
+schema = ["jsonschema>=4.22"]
+all = ["PyYAML>=6.0", "psycopg[binary]>=3.1", "cryptography>=42.0", "jsonschema>=4.22"]
 
 [project.scripts]
 chs = "cross_harness_scaffolder.cli:main"

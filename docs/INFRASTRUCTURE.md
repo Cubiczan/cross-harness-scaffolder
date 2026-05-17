@@ -88,3 +88,14 @@ The live adapter layer starts with two stable permission boundaries:
 - `CommandHarnessAdapter`: local CLI process handoff for selected harnesses where command execution is explicit, non-shell, timeout-bound, and stdout-captured.
 
 The initial native adapter specs cover file handoff, Codex CLI, Claude Code CLI, Aider CLI, and SuperServe execution. Additional harness adapters should only be promoted when their API surface and approval model are stable enough to audit.
+
+The catalog also includes gated command specs for Cursor, Continue, GitHub Copilot, Sourcegraph Cody, GLM 5, DeepSeek, and Qwen. Gated specs are documentation plus a safe command boundary, not automatic execution permission.
+
+## Optional Validation And Signing Extras
+
+Dependency-light remains the default. Install extras only where needed:
+
+- `schema`: enables JSON Schema validation with `jsonschema` through `chs validate-config --json-schema`.
+- `crypto`: enables Ed25519 public-key signing and verification through `cryptography`.
+
+HMAC signing remains available without extra dependencies. Ed25519 is preferred when a release gate needs public verification without sharing the signing secret.
