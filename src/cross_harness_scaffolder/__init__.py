@@ -35,6 +35,9 @@ from .core import (
     write_scaffold_package,
 )
 from .execution import ExecutionRequest, ExecutionResult, LocalExecutionBackend, SuperserveBackend, SuperserveConfig
+from .adapters import FileHarnessAdapter, HarnessAdapterRegistry, HarnessAdapterResult
+from .schemas import export_json_schemas, schema_bundle
+from .session_config import load_session, session_from_mapping
 from .storage import (
     CockroachStore,
     DatabaseConfig,
@@ -85,6 +88,9 @@ __all__ = [
     "DatabaseConfig",
     "ExecutionRequest",
     "ExecutionResult",
+    "FileHarnessAdapter",
+    "HarnessAdapterRegistry",
+    "HarnessAdapterResult",
     "LocalExecutionBackend",
     "PayloadRecord",
     "PostgresStore",
@@ -96,4 +102,8 @@ __all__ = [
     "SuperserveConfig",
     "build_database_config",
     "cockroach_retry_delays",
+    "export_json_schemas",
+    "load_session",
+    "schema_bundle",
+    "session_from_mapping",
 ]

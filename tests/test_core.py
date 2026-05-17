@@ -97,6 +97,7 @@ def test_harness_profiles_include_requested_systems() -> None:
         "GLM 5",
         "DeepSeek",
         "Qwen",
+        "SuperServe",
     } <= names
 
 
@@ -116,6 +117,7 @@ def test_aliases_build_requested_harness_council() -> None:
         "glm-5",
         "deepseek-r1",
         "qwen coder",
+        "firecracker",
     )
     systems = [profile.system for profile in council]
 
@@ -134,6 +136,7 @@ def test_aliases_build_requested_harness_council() -> None:
         "GLM 5",
         "DeepSeek",
         "Qwen",
+        "SuperServe",
     ]
 
 

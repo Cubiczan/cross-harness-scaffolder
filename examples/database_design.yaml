@@ -1,0 +1,43 @@
+title: Validate scalable database design
+human_bridge: Human operator
+origin:
+  name: codex
+  model: GPT-5.5
+partner:
+  name: claude_code
+  model: Claude Opus 4.6
+validators:
+  - name: deepseek
+  - name: qwen3-coder
+dossier:
+  core_problem: Validate whether the proposed event store supports PostgreSQL, CockroachDB, and SQLite without transcript bloat.
+  goal_state:
+    - Scalable schema
+    - Compact state
+    - Third-party validation before lock
+  current_state:
+    - Cross-Harness Scaffolder includes storage backend seams.
+  constraints:
+    - ASCII packets
+    - No full transcript duplication
+    - Database-specific retry behavior must be explicit
+  scope:
+    - storage interfaces
+    - migration SQL
+    - validation tests
+  origin_direction:
+    - Use content-addressed payload blobs
+    - Keep Cockroach retry logic separate from PostgreSQL
+foundation:
+  weakest_assumptions:
+    - The same logical schema can serve local and distributed database modes.
+    - Validators will catch database-specific semantics.
+  invalidation_conditions:
+    - Cockroach serializable retries are ignored.
+    - Full packets are duplicated in hot state.
+  key_vulnerability: Treating all SQL databases as operationally identical.
+diagnostics:
+  - item: database_architecture
+    observed_layer: task_flow
+    constraint_layer: system_design
+    diagnosis: Database portability is constrained by transaction semantics, not table names.

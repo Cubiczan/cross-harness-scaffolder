@@ -41,12 +41,15 @@ The standalone package supports these harness families as first-class profiles:
 - GLM 5
 - DeepSeek
 - Qwen
+- SuperServe
 
 Each harness can be origin, partner, or validator depending on the work split. The recommended pattern for production work is:
 
 - Origin: implementation harness that owns repo edits and tests.
 - Partner: adversarial harness that attacks the spec before implementation.
 - Validators: one or more independent harnesses that confirm the lock before final status.
+
+SuperServe is represented both as a validation harness profile and as an execution backend seam. That keeps sandboxed Firecracker-style checks available for release smoke tests without giving normal harness packets direct access to secrets.
 
 ## Current Verdict
 

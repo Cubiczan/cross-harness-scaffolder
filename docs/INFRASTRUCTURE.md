@@ -68,6 +68,8 @@ Use for:
 - ephemeral test environments,
 - sandbox IDs attached to audit events.
 
+The harness registry also exposes `SuperServe` as a profile through aliases such as `firecracker`, `microvm`, and `superserve.ai`. Use that profile when a session needs sandbox validation as a first-class validator rather than only an execution backend.
+
 The adapter expects the client to expose:
 
 - `create_sandbox(template=..., network_policy=...)`

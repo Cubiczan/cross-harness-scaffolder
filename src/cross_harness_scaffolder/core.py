@@ -730,6 +730,20 @@ HARNESS_ARCHETYPES = {
         default_tools=("reasoning", "code generation", "code review", "test design"),
         best_for=("implementation alternatives", "large refactor sketches", "multilingual code review"),
     ),
+    "superserve": HarnessProfile(
+        system="SuperServe",
+        model="Firecracker microVM execution backend",
+        role="sandbox_validation_harness",
+        strengths=(
+            "Firecracker microVM isolation",
+            "network-restricted validation",
+            "ephemeral execution environments",
+            "sandbox IDs for audit records",
+        ),
+        constraints=("requires configured SuperServe client", "never pass secrets through harness packets"),
+        default_tools=("microVM sandbox", "command execution", "network policy", "snapshot metadata"),
+        best_for=("untrusted code validation", "fresh-environment tests", "release smoke checks"),
+    ),
 }
 
 HARNESS_ALIASES = {
@@ -777,6 +791,9 @@ HARNESS_ALIASES = {
     "qwen3 coder": "qwen",
     "qwen3-coder": "qwen",
     "tongyi": "qwen",
+    "firecracker": "superserve",
+    "microvm": "superserve",
+    "superserve.ai": "superserve",
 }
 
 

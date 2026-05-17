@@ -38,6 +38,7 @@ Those harnesses have different strengths:
 | GLM 5 | Independent frontier reasoning and multilingual critique |
 | DeepSeek | Code reasoning, performance review, algorithm checks |
 | Qwen | Code generation alternatives, broad implementation critique |
+| SuperServe | Firecracker microVM validation, network-deny execution, release smoke checks |
 
 Cross-Harness Scaffolder turns those differences into a repeatable build protocol.
 
@@ -95,6 +96,30 @@ Run tests:
 ```bash
 python -m pytest -q
 ```
+
+## CLI
+
+The package installs a `chs` command for repeatable runs from YAML or JSON:
+
+```bash
+chs create-session --config examples/database_design.yaml --out .cross-harness-runs/database-design --payload-id ABC123
+chs consensus-report --config examples/database_design.yaml --output .cross-harness-runs/database-design/report.md
+chs export-schemas --out schemas
+```
+
+More detail: [docs/CLI_AND_EXAMPLES.md](docs/CLI_AND_EXAMPLES.md).
+
+Commands:
+
+- `create-session` builds the complete scaffold bundle from a session config.
+- `consensus-report` runs a CI-ready Consensus Hardening report and exits nonzero if critical gates fail.
+- `export-schemas` writes JSON schemas for session configs, packet objects, and compact state.
+
+Example session bundles live in:
+
+- `examples/database_design.yaml`
+- `examples/refactor_review.yaml`
+- `examples/package_release.yaml`
 
 ## Quick Start
 
@@ -196,6 +221,22 @@ Useful calls:
 - `build_origin_packet(session)` emits the origin-to-partner packet.
 - `run_consensus_hardening_review(session)` returns pass/fail findings.
 - `build_scaffold_package(session)` creates the complete handoff bundle.
+- `load_session("examples/database_design.yaml")` creates a session from YAML or JSON.
+- `export_json_schemas("schemas")` exports config, packet, and state schemas.
+
+## Adapter Layer
+
+The optional adapter layer gives live integrations a stable seam without making the core package depend on every IDE or vendor SDK.
+
+```python
+from cross_harness_scaffolder import FileHarnessAdapter, get_harness_profile
+
+adapter = FileHarnessAdapter(get_harness_profile("cursor"), ".cross-harness-live")
+adapter.send_packet("BEGIN_PAYLOAD [RX] [ABC123]\n...\nEND_PAYLOAD [RX] [ABC123]", session_id="run-001")
+response = adapter.receive_response(session_id="run-001")
+```
+
+`FileHarnessAdapter` is intentionally simple: it writes `inbox_packet.md` and reads `outbox_response.md`. Native adapters for Codex, Claude Code, Cursor, Copilot, Antigravity, GLM 5, DeepSeek, Qwen, and SuperServe can use the same interface.
 
 ## Built-In Aliases
 
@@ -222,6 +263,7 @@ The profile resolver accepts common names:
 | `glm 5`, `glm-5`, `zhipu` | GLM 5 |
 | `deepseek r1`, `deepseek-r1` | DeepSeek |
 | `qwen3`, `qwen3-coder`, `qwen coder`, `tongyi` | Qwen |
+| `firecracker`, `microvm`, `superserve.ai` | SuperServe |
 
 ## Token-Efficient State
 
@@ -276,20 +318,24 @@ python -m compileall src
 The test suite covers:
 
 - requested harness profiles, including GLM 5, DeepSeek, and Qwen,
+- SuperServe as a Firecracker validation harness and execution backend seam,
 - alias resolution,
 - model parity,
 - payload envelopes,
 - Consensus Hardening review,
+- YAML/JSON session loading,
+- CLI bundle/report/schema commands,
+- JSON schema exports,
+- file-based adapter handoff,
 - token-efficient package output,
 - path traversal protection.
 
 ## Roadmap
 
-- CLI wrapper for creating a session from YAML.
-- Optional adapter layer for live harness integrations.
-- JSON schema exports for generated packets and state.
-- CI-ready Consensus Hardening report command.
-- Example bundles for database design, refactor review, and package release.
+- Native live adapters for selected harnesses where APIs are stable and permission models are clear.
+- Schema validation command that validates a config before bundle creation.
+- GitHub Actions examples for `chs consensus-report`.
+- Signed bundle manifests for release-gate audit trails.
 
 ## Repository Status
 
@@ -300,5 +346,6 @@ Current local state:
 - Python package scaffolded.
 - Tests passing.
 - Consensus Hardening review included.
+- CLI, schemas, adapters, and example session bundles included.
 - PostgreSQL, CockroachDB, SQLite, local execution, and SuperServe adapter seams included.
 - Published to Codeberg and GitHub mirrors where credentials are configured.

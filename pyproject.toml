@@ -14,10 +14,14 @@ keywords = ["ai", "agents", "coding", "harness", "consensus-hardening"]
 dependencies = []
 
 [project.optional-dependencies]
+yaml = ["PyYAML>=6.0"]
 postgres = ["psycopg[binary]>=3.1"]
 cockroach = ["psycopg[binary]>=3.1"]
 superserve = []
-all = ["psycopg[binary]>=3.1"]
+all = ["PyYAML>=6.0", "psycopg[binary]>=3.1"]
+
+[project.scripts]
+chs = "cross_harness_scaffolder.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

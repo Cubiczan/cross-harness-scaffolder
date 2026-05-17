@@ -1,0 +1,43 @@
+title: Package release gate
+human_bridge: Human operator
+origin:
+  name: codex
+partner:
+  name: github copilot
+validators:
+  - name: cline
+  - name: superserve
+    model: Firecracker sandbox adapter
+dossier:
+  core_problem: Validate whether a Python package is ready for release.
+  goal_state:
+    - Tests pass
+    - README and package metadata are aligned
+    - Sandbox execution confirms install path
+  current_state:
+    - Package is ready for final release review.
+  constraints:
+    - No secrets in packets
+    - Release action requires human approval
+    - Sandbox network should be deny-by-default
+  scope:
+    - package metadata
+    - tests
+    - install command
+    - release notes
+  origin_direction:
+    - Run local tests first
+    - Use sandbox validation before publishing
+foundation:
+  weakest_assumptions:
+    - Local tests represent install behavior.
+    - Package metadata matches README claims.
+  invalidation_conditions:
+    - Fresh environment install fails.
+    - README documents unsupported features.
+  key_vulnerability: Confusing local success with releasable artifact quality.
+diagnostics:
+  - item: release_readiness
+    observed_layer: task_flow
+    constraint_layer: deployment_context
+    diagnosis: Release quality depends on fresh-environment behavior, not only local tests.

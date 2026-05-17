@@ -1,0 +1,41 @@
+title: Cross-harness refactor review
+human_bridge: Human operator
+origin:
+  name: cursor
+partner:
+  name: claude
+validators:
+  - name: codex
+  - name: sourcegraph
+dossier:
+  core_problem: Validate a multi-file refactor before implementation lands.
+  goal_state:
+    - Clear ownership split
+    - Tests identified before edits
+    - Independent review before lock
+  current_state:
+    - Refactor affects multiple code paths and needs harness-specific review.
+  constraints:
+    - Preserve public API compatibility
+    - Avoid unrelated formatting churn
+    - Keep review packets compact
+  scope:
+    - refactor plan
+    - risk checklist
+    - implementation handoff
+  origin_direction:
+    - Use IDE-native symbol awareness for edits
+    - Use partner harness for assumption attack
+foundation:
+  weakest_assumptions:
+    - IDE symbol awareness covers all dynamic call sites.
+    - Refactor risk can be bounded before tests run.
+  invalidation_conditions:
+    - Hidden runtime coupling exists.
+    - Tests do not cover the changed interface.
+  key_vulnerability: False safety from local symbol resolution alone.
+diagnostics:
+  - item: refactor_scope
+    observed_layer: repo_state
+    constraint_layer: system_design
+    diagnosis: File-level edits may miss architectural coupling.
