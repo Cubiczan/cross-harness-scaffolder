@@ -17,6 +17,7 @@ MANIFEST_PATH = "cross-harness/bundle_manifest.json"
 MANIFEST_VERSION = "chs-bundle-manifest-v1"
 SIGNATURE_ALGORITHM = "hmac_sha256"
 PUBLIC_KEY_SIGNATURE_ALGORITHM = "ed25519"
+TRANSPARENCY_LOG_VERSION = "chs-transparency-log-v1"
 
 
 def build_bundle_manifest(
@@ -219,6 +220,86 @@ def write_public_key_signed_directory_manifest(
     return target
 
 
+def build_transparency_log_entry(
+    manifest: dict[str, Any],
+    *,
+    log_id: str = "local",
+    source: str = "",
+    previous_entry_hash: str | None = None,
+    recorded_at: str | None = None,
+) -> dict[str, Any]:
+    manifest_hash = hashlib.sha256(_canonical_json(manifest).encode("ascii")).hexdigest()
+    signature = manifest.get("signature") if isinstance(manifest.get("signature"), dict) else {}
+    entry = {
+        "log_version": TRANSPARENCY_LOG_VERSION,
+        "log_id": log_id,
+        "recorded_at": recorded_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "source": source,
+        "manifest_hash": manifest_hash,
+        "manifest_version": manifest.get("manifest_version", ""),
+        "manifest_created_at": manifest.get("created_at", ""),
+        "signer": manifest.get("signer", ""),
+        "artifact_count": manifest.get("artifact_count", 0),
+        "signature_algorithm": signature.get("algorithm", ""),
+        "signature_key_id": signature.get("key_id", ""),
+        "signature_value": signature.get("value", ""),
+        "previous_entry_hash": previous_entry_hash or "",
+    }
+    entry["entry_hash"] = hashlib.sha256(_canonical_json(entry).encode("ascii")).hexdigest()
+    return entry
+
+
+def export_transparency_log(
+    manifests: Iterable[dict[str, Any]],
+    output: str | Path,
+    *,
+    log_id: str = "local",
+    sources: Iterable[str] | None = None,
+    append: bool = False,
+    chain: bool = True,
+) -> Path:
+    target = Path(output)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    source_list = list(sources or ())
+    entries = []
+    previous = _last_log_entry_hash(target) if append and chain else None
+    for idx, manifest in enumerate(manifests):
+        source = source_list[idx] if idx < len(source_list) else ""
+        entry = build_transparency_log_entry(
+            manifest,
+            log_id=log_id,
+            source=source,
+            previous_entry_hash=previous if chain else None,
+        )
+        previous = entry["entry_hash"]
+        entries.append(entry)
+    mode = "a" if append else "w"
+    with target.open(mode, encoding="ascii") as handle:
+        for entry in entries:
+            handle.write(json.dumps(entry, ensure_ascii=True, sort_keys=True) + "\n")
+    return target
+
+
+def export_transparency_log_from_paths(
+    manifest_paths: Iterable[str | Path],
+    output: str | Path,
+    *,
+    log_id: str = "local",
+    append: bool = False,
+    chain: bool = True,
+) -> Path:
+    paths = [Path(path) for path in manifest_paths]
+    manifests = [json.loads(path.read_text(encoding="ascii")) for path in paths]
+    return export_transparency_log(
+        manifests,
+        output,
+        log_id=log_id,
+        sources=[path.as_posix() for path in paths],
+        append=append,
+        chain=chain,
+    )
+
+
 def _replace_manifest(package: ScaffoldPackage, manifest: dict[str, Any]) -> ScaffoldPackage:
     content = json.dumps(manifest, indent=2, sort_keys=True)
     manifest_artifact = ScaffoldArtifact(MANIFEST_PATH, "release-gate audit manifest", content)
@@ -251,6 +332,23 @@ def _canonical_json(value: dict[str, Any]) -> str:
     payload = dict(value)
     payload.pop("signature", None)
     return json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+
+
+def _last_log_entry_hash(path: Path) -> str | None:
+    if not path.exists():
+        return None
+    last = ""
+    for line in path.read_text(encoding="ascii").splitlines():
+        if line.strip():
+            last = line
+    if not last:
+        return None
+    try:
+        entry = json.loads(last)
+    except json.JSONDecodeError:
+        return None
+    value = entry.get("entry_hash")
+    return value if isinstance(value, str) and value else None
 
 
 def _cryptography_modules():

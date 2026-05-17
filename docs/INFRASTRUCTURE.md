@@ -89,13 +89,20 @@ The live adapter layer starts with two stable permission boundaries:
 
 The initial native adapter specs cover file handoff, Codex CLI, Claude Code CLI, Aider CLI, and SuperServe execution. Additional harness adapters should only be promoted when their API surface and approval model are stable enough to audit.
 
-The catalog also includes gated command specs for Cursor, Continue, GitHub Copilot, Sourcegraph Cody, GLM 5, DeepSeek, and Qwen. Gated specs are documentation plus a safe command boundary, not automatic execution permission.
+The catalog also includes gated command specs for Cursor, Continue, GitHub Copilot, Sourcegraph Cody, GLM 5, DeepSeek, and Qwen. Gated execution requires `build_native_adapter(..., allow_gated=True, permission_review=...)` and a complete `PermissionReview`. This keeps execution tied to a named reviewer, command surface, auth scope, workspace scope, and audit sink.
 
 ## Optional Validation And Signing Extras
 
 Dependency-light remains the default. Install extras only where needed:
 
 - `schema`: enables JSON Schema validation with `jsonschema` through `chs validate-config --json-schema`.
+- external schemas: use `chs validate-config --schema path/to/schema.json` to enforce organization policy alongside built-in validation.
 - `crypto`: enables Ed25519 public-key signing and verification through `cryptography`.
 
 HMAC signing remains available without extra dependencies. Ed25519 is preferred when a release gate needs public verification without sharing the signing secret.
+
+Signed manifests can be exported to a JSONL transparency log with chained entry hashes:
+
+```bash
+chs export-transparency-log --manifest path/to/bundle_manifest.json --output transparency.jsonl --log-id release-log
+```

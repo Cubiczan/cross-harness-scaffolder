@@ -7,9 +7,11 @@ Cross-Harness Scaffolder can be driven from YAML or JSON so teams can store repe
 ```bash
 chs create-session --config examples/database_design.yaml --out .cross-harness-runs/database-design --payload-id ABC123
 chs validate-config --config examples/database_design.yaml --json-schema
+chs validate-config --config examples/database_design.yaml --schema schemas/session_config.schema.json
 chs consensus-report --config examples/database_design.yaml --output .cross-harness-runs/database-design/report.md
 chs export-schemas --out schemas
 CHS_SIGNING_KEY="change-me" chs sign-bundle --bundle .cross-harness-runs/database-design/cross-harness --key-id local-release
+chs export-transparency-log --manifest .cross-harness-runs/database-design/cross-harness/bundle_manifest.json --output .cross-harness-runs/transparency.jsonl
 ```
 
 ## Session Config Shape
@@ -38,7 +40,7 @@ Profiles are resolved through the built-in harness registry, so configs can use 
 
 ## CI Gate
 
-Use `chs validate-config` and `chs consensus-report` as pre-merge checks. Validation catches malformed session configs before bundle creation. Add `--json-schema` to run the exported JSON Schema when the optional `schema` extra is installed. The report fails on critical Consensus Hardening issues such as missing foundation disclosure, invalid R0 gate, model parity halt, malformed payload envelope, or absent diagnostic items.
+Use `chs validate-config` and `chs consensus-report` as pre-merge checks. Validation catches malformed session configs before bundle creation. Add `--json-schema` to run the exported JSON Schema when the optional `schema` extra is installed. Add `--schema PATH` to layer an external organization schema on top of the built-in checks. The report fails on critical Consensus Hardening issues such as missing foundation disclosure, invalid R0 gate, model parity halt, malformed payload envelope, or absent diagnostic items.
 
 ```bash
 chs consensus-report --config examples/package_release.yaml --format json --output chs-report.json
@@ -59,7 +61,7 @@ The adapter interface is deliberately small:
 
 `CommandHarnessAdapter` is the baseline live adapter for local CLI harnesses. It never invokes a shell. The caller passes an explicit command tuple, the packet goes to stdin, stdout becomes the response, and timeout/output caps keep the permission boundary clear.
 
-Additional adapter specs are included as gated surfaces for Cursor, Continue, GitHub Copilot, Sourcegraph Cody, GLM 5, DeepSeek, and Qwen. Gated means the spec documents a safe command boundary, but teams should not auto-enable it until the local command, auth scope, workspace permissions, and audit behavior are reviewed.
+Additional adapter specs are included as gated surfaces for Cursor, Continue, GitHub Copilot, Sourcegraph Cody, GLM 5, DeepSeek, and Qwen. Gated execution is available only when `build_native_adapter(...)` receives `allow_gated=True` and a complete `PermissionReview` covering reviewer, command surface, auth scope, workspace scope, audit sink, and approval status.
 
 ## Signed Manifests
 
@@ -83,3 +85,11 @@ For public-key release gates, install `.[crypto]` and use Ed25519 PEM keys:
 chs sign-bundle --mode ed25519 --bundle .cross-harness-runs/release/cross-harness --private-key-file keys/release-ed25519.pem --key-id release-ed25519
 chs verify-manifest --mode ed25519 --manifest .cross-harness-runs/release/cross-harness/bundle_manifest.json --public-key-file keys/release-ed25519.pub.pem
 ```
+
+Export signed manifests into a transparency log:
+
+```bash
+chs export-transparency-log --manifest .cross-harness-runs/release/cross-harness/bundle_manifest.json --output .cross-harness-runs/transparency.jsonl --log-id release-log
+```
+
+Use `--append` to add new entries to an existing log. By default, appended entries chain from the previous entry hash.

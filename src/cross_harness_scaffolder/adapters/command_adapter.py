@@ -29,6 +29,26 @@ class NativeAdapterSpec:
     notes: str = ""
 
 
+@dataclass(frozen=True)
+class PermissionReview:
+    reviewer: str
+    command_surface: str
+    auth_scope: str
+    workspace_scope: str
+    audit_sink: str
+    approved: bool = False
+    risk_notes: str = ""
+
+    def validate(self) -> tuple[str, ...]:
+        missing = []
+        for field in ("reviewer", "command_surface", "auth_scope", "workspace_scope", "audit_sink"):
+            if not getattr(self, field):
+                missing.append(field)
+        if not self.approved:
+            missing.append("approved")
+        return tuple(missing)
+
+
 class CommandHarnessAdapter:
     """Run a local harness command with the packet on stdin.
 
@@ -45,6 +65,8 @@ class CommandHarnessAdapter:
         timeout_seconds: int = 300,
         max_output_bytes: int = 65536,
         dry_run: bool = False,
+        permission_review: PermissionReview | None = None,
+        adapter_spec: NativeAdapterSpec | None = None,
     ) -> None:
         if not command:
             raise ValueError("command must include an executable")
@@ -54,6 +76,8 @@ class CommandHarnessAdapter:
         self.timeout_seconds = timeout_seconds
         self.max_output_bytes = max_output_bytes
         self.dry_run = dry_run
+        self.permission_review = permission_review
+        self.adapter_spec = adapter_spec
         self._responses: dict[str, str] = {}
 
     def send_packet(self, packet: str, *, session_id: str) -> HarnessAdapterResult:
@@ -92,6 +116,42 @@ def build_command_adapter(
     **kwargs,
 ) -> CommandHarnessAdapter:
     return CommandHarnessAdapter(get_harness_profile(profile_name), command, **kwargs)
+
+
+def native_adapter_spec(name: str) -> NativeAdapterSpec:
+    normalized = name.strip().lower()
+    for spec in native_adapter_specs():
+        if spec.name == normalized:
+            return spec
+    raise KeyError(f"unknown native adapter spec: {name}")
+
+
+def build_native_adapter(
+    spec_name: str,
+    command: tuple[str, ...],
+    *,
+    permission_review: PermissionReview | None = None,
+    allow_gated: bool = False,
+    **kwargs,
+) -> CommandHarnessAdapter:
+    spec = native_adapter_spec(spec_name)
+    if spec.adapter_type != "command":
+        raise ValueError(f"native adapter spec is not command-executable: {spec.name}")
+    if spec.stability == AdapterStability.GATED:
+        if not allow_gated:
+            raise PermissionError(f"{spec.name} is gated; pass allow_gated=True after permission-model review")
+        if permission_review is None:
+            raise PermissionError(f"{spec.name} requires a PermissionReview")
+        missing = permission_review.validate()
+        if missing:
+            raise PermissionError(f"{spec.name} permission review incomplete: {', '.join(missing)}")
+    return CommandHarnessAdapter(
+        get_harness_profile(spec.profile_name),
+        command,
+        permission_review=permission_review,
+        adapter_spec=spec,
+        **kwargs,
+    )
 
 
 def native_adapter_specs() -> tuple[NativeAdapterSpec, ...]:
@@ -217,3 +277,7 @@ def native_adapter_specs() -> tuple[NativeAdapterSpec, ...]:
 
 def stable_native_adapter_specs() -> tuple[NativeAdapterSpec, ...]:
     return tuple(spec for spec in native_adapter_specs() if spec.stability == AdapterStability.STABLE)
+
+
+def gated_native_adapter_specs() -> tuple[NativeAdapterSpec, ...]:
+    return tuple(spec for spec in native_adapter_specs() if spec.stability == AdapterStability.GATED)

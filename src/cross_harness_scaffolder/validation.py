@@ -49,14 +49,24 @@ class ConfigValidationResult:
         return "\n".join(lines)
 
 
-def validate_session_config(path: str | Path, *, use_json_schema: bool = False) -> ConfigValidationResult:
-    return validate_session_config_mapping(load_mapping(path), use_json_schema=use_json_schema)
+def validate_session_config(
+    path: str | Path,
+    *,
+    use_json_schema: bool = False,
+    schema_path: str | Path | None = None,
+) -> ConfigValidationResult:
+    return validate_session_config_mapping(
+        load_mapping(path),
+        use_json_schema=use_json_schema or schema_path is not None,
+        schema_path=schema_path,
+    )
 
 
 def validate_session_config_mapping(
     data: dict[str, Any],
     *,
     use_json_schema: bool = False,
+    schema_path: str | Path | None = None,
 ) -> ConfigValidationResult:
     issues: list[ConfigValidationIssue] = []
 
@@ -84,7 +94,7 @@ def validate_session_config_mapping(
             add(key, "is required")
 
     if use_json_schema:
-        issues.extend(validate_mapping_against_json_schema(data))
+        issues.extend(validate_mapping_against_json_schema(data, schema_path=schema_path))
 
     if "title" in data and not isinstance(data["title"], str):
         add("title", "must be a string")
@@ -169,7 +179,11 @@ def json_schema_validator_available() -> bool:
     return True
 
 
-def validate_mapping_against_json_schema(data: dict[str, Any]) -> tuple[ConfigValidationIssue, ...]:
+def validate_mapping_against_json_schema(
+    data: dict[str, Any],
+    *,
+    schema_path: str | Path | None = None,
+) -> tuple[ConfigValidationIssue, ...]:
     try:
         from jsonschema import Draft202012Validator  # type: ignore
     except ImportError:
@@ -181,12 +195,30 @@ def validate_mapping_against_json_schema(data: dict[str, Any]) -> tuple[ConfigVa
             ),
         )
 
-    validator = Draft202012Validator(SESSION_CONFIG_SCHEMA)
+    schema = _load_schema(schema_path) if schema_path else SESSION_CONFIG_SCHEMA
+    validator = Draft202012Validator(schema)
     issues = []
     for error in sorted(validator.iter_errors(data), key=lambda item: list(item.path)):
         path = ".".join(str(part) for part in error.path) or "$"
         issues.append(ConfigValidationIssue(path=f"json_schema.{path}", message=error.message, severity="error"))
     return tuple(issues)
+
+
+def _load_schema(schema_path: str | Path | None) -> dict[str, Any]:
+    if schema_path is None:
+        return SESSION_CONFIG_SCHEMA
+    source = Path(schema_path)
+    if source.suffix.lower() in (".yaml", ".yml"):
+        try:
+            import yaml  # type: ignore
+        except ImportError as exc:  # pragma: no cover - depends on optional dependency.
+            raise RuntimeError("Install the yaml extra to load YAML schemas: pip install .[yaml]") from exc
+        schema = yaml.safe_load(source.read_text(encoding="utf-8"))
+    else:
+        schema = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(schema, dict):
+        raise ValueError("external schema must be a mapping")
+    return schema
 
 
 def _validate_profile(profile: dict[str, Any], path: str, add) -> None:

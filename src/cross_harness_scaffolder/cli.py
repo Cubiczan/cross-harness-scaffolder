@@ -10,6 +10,7 @@ from .core import build_scaffold_package, run_consensus_hardening_review, write_
 from .schemas import export_json_schemas
 from .session_config import load_session
 from .signing import (
+    export_transparency_log_from_paths,
     sign_scaffold_package,
     sign_scaffold_package_public_key,
     verify_bundle_manifest_public_key,
@@ -21,7 +22,7 @@ from .validation import validate_session_config
 
 
 def _create_session(args: argparse.Namespace) -> int:
-    validation = validate_session_config(args.config, use_json_schema=args.json_schema)
+    validation = validate_session_config(args.config, use_json_schema=args.json_schema, schema_path=args.schema)
     if not validation.ok:
         print(validation.render_markdown())
         return 1
@@ -72,7 +73,7 @@ def _consensus_report(args: argparse.Namespace) -> int:
 
 
 def _validate_config(args: argparse.Namespace) -> int:
-    result = validate_session_config(args.config, use_json_schema=args.json_schema)
+    result = validate_session_config(args.config, use_json_schema=args.json_schema, schema_path=args.schema)
     output = result.render_markdown() if args.format == "markdown" else result.render_json()
     if args.output:
         target = Path(args.output)
@@ -135,6 +136,18 @@ def _verify_manifest(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _export_transparency_log(args: argparse.Namespace) -> int:
+    target = export_transparency_log_from_paths(
+        args.manifest,
+        args.output,
+        log_id=args.log_id,
+        append=args.append,
+        chain=not args.no_chain,
+    )
+    print(json.dumps({"written": str(target), "manifest_count": len(args.manifest), "log_id": args.log_id}, indent=2))
+    return 0
+
+
 def _read_key_material(file_path: str | None, env_var: str | None) -> str | None:
     if file_path:
         return Path(file_path).read_text(encoding="utf-8")
@@ -163,6 +176,7 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--out", required=True, help="Output directory")
     create.add_argument("--payload-id", default=None, help="Optional 6-character payload id")
     create.add_argument("--json-schema", action="store_true", help="Also validate against exported JSON Schema")
+    create.add_argument("--schema", help="External JSON Schema path for additional validation")
     create.add_argument("--signing-mode", choices=("hmac", "ed25519"), default="hmac")
     create.add_argument("--signing-key-env", help="Environment variable containing an HMAC signing secret")
     create.add_argument("--key-id", default="local", help="Signing key identifier for the bundle manifest")
@@ -175,6 +189,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--format", choices=("markdown", "json"), default="markdown")
     validate.add_argument("--output", help="Optional validation report output path")
     validate.add_argument("--json-schema", action="store_true", help="Also validate against exported JSON Schema")
+    validate.add_argument("--schema", help="External JSON Schema path for additional validation")
     validate.set_defaults(func=_validate_config)
 
     report = sub.add_parser("consensus-report", help="Run a CI-ready Consensus Hardening report")
@@ -204,6 +219,14 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--secret-env", default="CHS_SIGNING_KEY", help="Environment variable containing HMAC secret")
     _add_public_verify_args(verify)
     verify.set_defaults(func=_verify_manifest)
+
+    log = sub.add_parser("export-transparency-log", help="Export signed manifest transparency log entries as JSONL")
+    log.add_argument("--manifest", action="append", required=True, help="Signed manifest path; may be repeated")
+    log.add_argument("--output", required=True, help="Transparency log JSONL output path")
+    log.add_argument("--log-id", default="local", help="Transparency log identifier")
+    log.add_argument("--append", action="store_true", help="Append to an existing log and chain from its last entry")
+    log.add_argument("--no-chain", action="store_true", help="Do not chain entries with previous_entry_hash")
+    log.set_defaults(func=_export_transparency_log)
 
     return parser
 

@@ -7,8 +7,13 @@ from cross_harness_scaffolder import (
     CommandHarnessAdapter,
     FileHarnessAdapter,
     HarnessAdapterRegistry,
+    PermissionReview,
+    build_native_adapter,
     build_scaffold_package,
+    build_transparency_log_entry,
+    export_transparency_log_from_paths,
     export_json_schemas,
+    gated_native_adapter_specs,
     get_harness_profile,
     json_schema_validator_available,
     load_session,
@@ -96,6 +101,38 @@ def test_cli_validate_config_with_optional_json_schema(tmp_path: Path) -> None:
     assert result.ok
     if not json_schema_validator_available():
         assert any(issue.path == "json_schema" and issue.severity == "warning" for issue in result.issues)
+
+
+def test_cli_validate_config_with_external_schema_path(tmp_path: Path) -> None:
+    config = _config(tmp_path / "session.json")
+    schema = tmp_path / "schema.json"
+    schema.write_text(
+        json.dumps(
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "required": ["title"],
+                "properties": {"title": {"const": "CLI session"}},
+            }
+        ),
+        encoding="ascii",
+    )
+
+    assert main(["validate-config", "--config", str(config), "--schema", str(schema)]) == 0
+
+    schema.write_text(
+        json.dumps(
+            {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "required": ["title"],
+                "properties": {"title": {"const": "Different"}},
+            }
+        ),
+        encoding="ascii",
+    )
+    result = main(["validate-config", "--config", str(config), "--schema", str(schema), "--format", "json"])
+    assert result == (1 if json_schema_validator_available() else 0)
 
 
 def test_cli_create_session_with_signed_manifest(tmp_path: Path, monkeypatch) -> None:
@@ -205,6 +242,44 @@ def test_native_adapter_specs_name_permission_boundaries() -> None:
     assert "explicit local command tuple" in specs["codex-cli"].permission_boundary
     assert specs["continue-cli"].stability == AdapterStability.GATED
     assert {spec.name for spec in stable_native_adapter_specs()} <= set(specs)
+    assert {"cursor-cli", "qwen-cli"} <= {spec.name for spec in gated_native_adapter_specs()}
+
+
+def test_gated_native_adapter_requires_permission_review() -> None:
+    command = (
+        sys.executable,
+        "-c",
+        "import sys; print(sys.stdin.read())",
+    )
+
+    try:
+        build_native_adapter("cursor-cli", command)
+    except PermissionError as exc:
+        assert "gated" in str(exc)
+    else:
+        raise AssertionError("expected gated adapter without review to fail")
+
+    review = PermissionReview(
+        reviewer="security",
+        command_surface="cursor --stdin",
+        auth_scope="local user",
+        workspace_scope="repo only",
+        audit_sink="adapter log",
+        approved=True,
+    )
+    adapter = build_native_adapter(
+        "cursor-cli",
+        command,
+        allow_gated=True,
+        permission_review=review,
+    )
+    result = adapter.send_packet("ok", session_id="session-1")
+
+    assert result.ok
+    assert adapter.adapter_spec is not None
+    assert adapter.adapter_spec.name == "cursor-cli"
+    assert adapter.permission_review == review
+    assert adapter.receive_response(session_id="session-1").strip() == "ok"
 
 
 def test_adapter_registry() -> None:
@@ -224,6 +299,32 @@ def test_sign_scaffold_package_verifies_manifest(tmp_path: Path) -> None:
 
     assert manifest["artifact_count"] == 8
     assert verify_bundle_manifest_signature(manifest, "secret")
+
+
+def test_transparency_log_export_from_manifest_paths(tmp_path: Path) -> None:
+    session = load_session(_config(tmp_path / "session.json"))
+    package = sign_scaffold_package(build_scaffold_package(session, payload_id="ABC123"), "secret", key_id="unit")
+    manifest = json.loads(next(item for item in package.artifacts if item.path.endswith("bundle_manifest.json")).content)
+    manifest_path = tmp_path / "bundle_manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="ascii")
+
+    entry = build_transparency_log_entry(manifest, log_id="unit-log", source=str(manifest_path))
+    assert entry["manifest_hash"]
+    assert entry["entry_hash"]
+
+    log_path = tmp_path / "transparency.jsonl"
+    assert export_transparency_log_from_paths([manifest_path], log_path, log_id="unit-log") == log_path
+    lines = log_path.read_text(encoding="ascii").splitlines()
+    assert len(lines) == 1
+    first = json.loads(lines[0])
+    assert first["log_id"] == "unit-log"
+    assert first["signature_key_id"] == "unit"
+
+    assert main(["export-transparency-log", "--manifest", str(manifest_path), "--output", str(log_path), "--append"]) == 0
+    lines = log_path.read_text(encoding="ascii").splitlines()
+    assert len(lines) == 2
+    second = json.loads(lines[1])
+    assert second["previous_entry_hash"] == first["entry_hash"]
 
 
 def test_public_key_signing_optional_dependency(tmp_path: Path) -> None:
