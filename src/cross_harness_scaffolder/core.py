@@ -520,6 +520,20 @@ HARNESS_ARCHETYPES = {
         default_tools=("reasoning", "code review", "test design"),
         best_for=("performance review", "algorithm checks", "edge-case testing"),
     ),
+    "qwen": HarnessProfile(
+        system="Qwen",
+        model="Qwen3-Coder or configured Qwen model",
+        role="frontier_code_generation_harness",
+        strengths=(
+            "code generation",
+            "agentic coding workflows",
+            "multilingual implementation review",
+            "cost-efficient broad critique",
+        ),
+        constraints=("tool execution depends on wrapper harness", "validate generated patches with local tests"),
+        default_tools=("reasoning", "code generation", "code review", "test design"),
+        best_for=("implementation alternatives", "large refactor sketches", "multilingual code review"),
+    ),
 }
 
 HARNESS_ALIASES = {
@@ -535,6 +549,13 @@ HARNESS_ALIASES = {
     "zhipu": "glm5",
     "deepseek r1": "deepseek",
     "deepseek-r1": "deepseek",
+    "qwen3": "qwen",
+    "qwen-3": "qwen",
+    "qwen coder": "qwen",
+    "qwen-coder": "qwen",
+    "qwen3 coder": "qwen",
+    "qwen3-coder": "qwen",
+    "tongyi": "qwen",
 }
 
 
@@ -690,9 +711,12 @@ def extract_first_code_block(markdown_text: str) -> str:
 
 def infer_model_tier(model_name: str) -> ModelTier:
     name = model_name.lower()
-    if any(token in name for token in ("gpt-5", "opus", "glm-5", "glm 5", "deepseek-r1", "deepseek r1")):
+    if any(
+        token in name
+        for token in ("gpt-5", "opus", "glm-5", "glm 5", "deepseek-r1", "deepseek r1", "qwen3", "qwen-3")
+    ):
         return ModelTier.FRONTIER
-    if any(token in name for token in ("sonnet", "gpt-4", "o3", "deepseek", "glm", "gemini")):
+    if any(token in name for token in ("sonnet", "gpt-4", "o3", "deepseek", "glm", "qwen", "gemini")):
         return ModelTier.HIGH
     if any(token in name for token in ("haiku", "mini", "small")):
         return ModelTier.MID

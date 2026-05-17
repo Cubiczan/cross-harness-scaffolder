@@ -26,6 +26,7 @@ The standalone package supports these harness families as first-class profiles:
 - Antigravity
 - GLM 5
 - DeepSeek
+- Qwen
 
 Each harness can be origin, partner, or validator depending on the work split. The recommended pattern for production work is:
 

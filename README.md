@@ -2,7 +2,7 @@
 
 Cross-Harness Scaffolder is a standalone, Consensus Hardening Protocol guided package for using multiple AI coding harnesses to build efficient and scalable code.
 
-The core idea is simple: each harness has different operating strengths. Codex may own repo-local edits and tests. Claude or Claude Code may attack the spec. Cursor may handle IDE-native refactors. Antigravity may run broader agentic tasks. GLM 5 and DeepSeek can act as lower-correlation frontier reviewers for architecture, algorithm, multilingual, or performance checks.
+The core idea is simple: each harness has different operating strengths. Codex may own repo-local edits and tests. Claude or Claude Code may attack the spec. Cursor may handle IDE-native refactors. Antigravity may run broader agentic tasks. GLM 5, DeepSeek, and Qwen can act as lower-correlation frontier reviewers or implementation challengers for architecture, algorithm, multilingual, or performance checks.
 
 Canonical protocol source: [Consensus Hardening Protocol](https://codeberg.org/cubiczan/consensus-hardening-protocol)
 
@@ -17,6 +17,7 @@ Harness definition reference: [Arize AI, "What Is An Agent Harness? Definition, 
 - Antigravity
 - GLM 5
 - DeepSeek
+- Qwen
 
 Each profile captures:
 
@@ -64,6 +65,7 @@ session = CrossHarnessSession(
         get_harness_profile("cursor"),
         get_harness_profile("glm 5"),
         get_harness_profile("deepseek"),
+        get_harness_profile("qwen3-coder"),
     ),
     human_bridge="Shyam",
     dossier=CrossHarnessDossier(

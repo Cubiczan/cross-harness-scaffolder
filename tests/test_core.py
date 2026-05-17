@@ -38,6 +38,7 @@ def _session() -> CrossHarnessSession:
             get_harness_profile("cursor"),
             get_harness_profile("glm 5"),
             get_harness_profile("deepseek"),
+            get_harness_profile("qwen3-coder"),
         ),
         human_bridge="Shyam",
         dossier=CrossHarnessDossier(
@@ -73,18 +74,18 @@ def _session() -> CrossHarnessSession:
 def test_harness_profiles_include_requested_systems() -> None:
     names = {get_harness_profile(name).system for name in available_harnesses()}
 
-    assert {"Codex", "Claude", "Claude Code", "Cursor", "Antigravity", "GLM 5", "DeepSeek"} <= names
+    assert {"Codex", "Claude", "Claude Code", "Cursor", "Antigravity", "GLM 5", "DeepSeek", "Qwen"} <= names
 
 
 def test_aliases_build_requested_harness_council() -> None:
-    council = build_harness_council("codex", "claude code", "cursor", "glm-5", "deepseek-r1")
+    council = build_harness_council("codex", "claude code", "cursor", "glm-5", "deepseek-r1", "qwen coder")
     systems = [profile.system for profile in council]
 
-    assert systems == ["Codex", "Claude Code", "Cursor", "GLM 5", "DeepSeek"]
+    assert systems == ["Codex", "Claude Code", "Cursor", "GLM 5", "DeepSeek", "Qwen"]
 
 
 def test_model_parity_allows_frontier_pair_and_blocks_large_gap() -> None:
-    frontier = assess_model_parity("GLM-5", "DeepSeek-R1")
+    frontier = assess_model_parity("Qwen3-Coder", "DeepSeek-R1")
     mismatch = assess_model_parity("Claude Haiku", "GPT-5.5")
 
     assert frontier.delta == ModelDelta.NONE
@@ -103,6 +104,7 @@ def test_origin_packet_uses_cross_harness_language_and_payload_echo() -> None:
     assert "CROSS-HARNESS SCAFFOLDER INITIATED" in packet
     assert "GLM 5" in packet
     assert "DeepSeek" in packet
+    assert "Qwen" in packet
     assert ("triang" + "ulat") not in packet.lower()
     assert packet.encode("ascii").decode("ascii") == packet
 
