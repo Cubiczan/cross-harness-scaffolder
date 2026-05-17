@@ -46,7 +46,7 @@ chs consensus-report --config examples/package_release.yaml --format json --outp
 
 Warnings, such as missing third-party validators, reduce the score without failing the command. Critical findings fail the command.
 
-See `.github/workflows/consensus-hardening.yml` for a matrix job that validates each example config and uploads the report artifact.
+See `docs/github-actions/consensus-hardening.yml` for a matrix job that validates each example config and uploads the report artifact. Copy it to `.github/workflows/consensus-hardening.yml` when publishing with a token that has GitHub workflow permission.
 
 ## Live Adapter Seam
 

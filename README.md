@@ -125,6 +125,8 @@ Example session bundles live in:
 - `examples/refactor_review.yaml`
 - `examples/package_release.yaml`
 
+GitHub Actions example: `docs/github-actions/consensus-hardening.yml`.
+
 ## Quick Start
 
 ```python
