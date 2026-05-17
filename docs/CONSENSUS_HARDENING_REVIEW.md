@@ -22,7 +22,21 @@ The standalone package supports these harness families as first-class profiles:
 - Codex
 - Claude
 - Claude Code
+- GitHub Copilot
+- VS Code
+- Visual Studio
+- JetBrains Junie
 - Cursor
+- Windsurf
+- Zed
+- Kiro
+- Replit Agent
+- Continue
+- Cline
+- Roo Code
+- Aider
+- Sourcegraph Cody
+- Tabnine
 - Antigravity
 - GLM 5
 - DeepSeek

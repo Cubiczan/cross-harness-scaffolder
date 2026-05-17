@@ -2,7 +2,7 @@
 
 Consensus-hardened scaffolding for using multiple AI coding harnesses to build efficient, scalable code.
 
-Cross-Harness Scaffolder is a standalone Python package for coordinating work across AI coding systems such as Codex, Claude, Claude Code, Cursor, Antigravity, GLM 5, DeepSeek, and Qwen. It does not try to make one model "the winner." It assigns each harness the work it is structurally best at, hardens the plan with Consensus Hardening Protocol gates, and emits compact artifacts that can move between tools without dragging full transcripts through every context window.
+Cross-Harness Scaffolder is a standalone Python package for coordinating work across AI coding systems and IDE harnesses such as Codex, Claude, Claude Code, GitHub Copilot, VS Code, Visual Studio, JetBrains Junie, Cursor, Windsurf, Zed, Kiro, Replit Agent, Continue, Cline, Roo Code, Aider, Sourcegraph Cody, Tabnine, Antigravity, GLM 5, DeepSeek, and Qwen. It does not try to make one model "the winner." It assigns each harness the work it is structurally best at, hardens the plan with Consensus Hardening Protocol gates, and emits compact artifacts that can move between tools without dragging full transcripts through every context window.
 
 Canonical protocol source: [Consensus Hardening Protocol](https://codeberg.org/cubiczan/consensus-hardening-protocol)
 
@@ -19,7 +19,21 @@ Those harnesses have different strengths:
 | Codex | Repo-local edits, tests, packaging, commit discipline |
 | Claude | Spec attack, architecture critique, assumption finding |
 | Claude Code | Codebase review, large-context implementation critique |
+| GitHub Copilot | IDE-native completion, chat, agent mode, GitHub workflow handoff |
+| VS Code | Extension host for Copilot, Continue, Cline, Roo Code, terminal/debug loops |
+| Visual Studio | Enterprise .NET/C++ solution work, debugger/profiler-aware validation |
+| JetBrains Junie | JetBrains project intelligence, JVM/polyglot refactors, autonomous IDE tasks |
 | Cursor | IDE-native refactors, symbol-aware edits, developer review |
+| Windsurf | AI-first multi-file feature work and flow-oriented coding sessions |
+| Zed | Fast open-source editor loops and external agent coordination |
+| Kiro | Spec-first development with agent hooks and implementation plans |
+| Replit Agent | Browser-based app building, hosted workspace execution, checkpoint rollback |
+| Continue | Open-source model-flexible IDE assistance for VS Code/JetBrains/CLI |
+| Cline | Open-source IDE agent with file edits, terminal, browser, and MCP |
+| Roo Code | Multi-mode VS Code agent workflows with custom modes and MCP |
+| Aider | Git-aware terminal pair programming and patch-oriented edits |
+| Sourcegraph Cody | Code graph context, large-codebase search, context-grounded explanations |
+| Tabnine | Enterprise completion, privacy-oriented assistance, team policy controls |
 | Antigravity | Agentic task execution, browser/workflow validation |
 | GLM 5 | Independent frontier reasoning and multilingual critique |
 | DeepSeek | Code reasoning, performance review, algorithm checks |
@@ -192,7 +206,18 @@ The profile resolver accepts common names:
 | `openai`, `gpt` | Codex |
 | `anthropic` | Claude |
 | `claude code`, `claude-code` | Claude Code |
+| `copilot`, `github copilot`, `gh copilot` | GitHub Copilot |
+| `vs code`, `visual studio code`, `vsc` | VS Code |
+| `vs`, `microsoft visual studio` | Visual Studio |
+| `jetbrains`, `junie`, `jetbrains ai` | JetBrains Junie |
 | `cursor ide` | Cursor |
+| `windsurf ai`, `codeium` | Windsurf |
+| `zed editor` | Zed |
+| `aws kiro` | Kiro |
+| `replit`, `replit ai` | Replit Agent |
+| `continue.dev`, `continue dev` | Continue |
+| `roo`, `roo-code`, `roo code` | Roo Code |
+| `sourcegraph`, `cody`, `sourcegraph amp` | Sourcegraph Cody |
 | `google antigravity` | Antigravity |
 | `glm 5`, `glm-5`, `zhipu` | GLM 5 |
 | `deepseek r1`, `deepseek-r1` | DeepSeek |

@@ -74,14 +74,67 @@ def _session() -> CrossHarnessSession:
 def test_harness_profiles_include_requested_systems() -> None:
     names = {get_harness_profile(name).system for name in available_harnesses()}
 
-    assert {"Codex", "Claude", "Claude Code", "Cursor", "Antigravity", "GLM 5", "DeepSeek", "Qwen"} <= names
+    assert {
+        "Codex",
+        "Claude",
+        "Claude Code",
+        "GitHub Copilot",
+        "VS Code",
+        "Visual Studio",
+        "JetBrains Junie",
+        "Cursor",
+        "Windsurf",
+        "Zed",
+        "Kiro",
+        "Replit Agent",
+        "Continue",
+        "Cline",
+        "Roo Code",
+        "Aider",
+        "Sourcegraph Cody",
+        "Tabnine",
+        "Antigravity",
+        "GLM 5",
+        "DeepSeek",
+        "Qwen",
+    } <= names
 
 
 def test_aliases_build_requested_harness_council() -> None:
-    council = build_harness_council("codex", "claude code", "cursor", "glm-5", "deepseek-r1", "qwen coder")
+    council = build_harness_council(
+        "codex",
+        "claude code",
+        "github copilot",
+        "vs code",
+        "junie",
+        "windsurf ai",
+        "aws kiro",
+        "replit",
+        "continue.dev",
+        "roo-code",
+        "sourcegraph",
+        "glm-5",
+        "deepseek-r1",
+        "qwen coder",
+    )
     systems = [profile.system for profile in council]
 
-    assert systems == ["Codex", "Claude Code", "Cursor", "GLM 5", "DeepSeek", "Qwen"]
+    assert systems == [
+        "Codex",
+        "Claude Code",
+        "GitHub Copilot",
+        "VS Code",
+        "JetBrains Junie",
+        "Windsurf",
+        "Kiro",
+        "Replit Agent",
+        "Continue",
+        "Roo Code",
+        "Sourcegraph Cody",
+        "GLM 5",
+        "DeepSeek",
+        "Qwen",
+    ]
 
 
 def test_model_parity_allows_frontier_pair_and_blocks_large_gap() -> None:
