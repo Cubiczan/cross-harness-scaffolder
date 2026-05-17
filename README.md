@@ -103,8 +103,10 @@ The package installs a `chs` command for repeatable runs from YAML or JSON:
 
 ```bash
 chs create-session --config examples/database_design.yaml --out .cross-harness-runs/database-design --payload-id ABC123
+chs validate-config --config examples/database_design.yaml
 chs consensus-report --config examples/database_design.yaml --output .cross-harness-runs/database-design/report.md
 chs export-schemas --out schemas
+CHS_SIGNING_KEY="change-me" chs sign-bundle --bundle .cross-harness-runs/database-design/cross-harness --key-id local-release
 ```
 
 More detail: [docs/CLI_AND_EXAMPLES.md](docs/CLI_AND_EXAMPLES.md).
@@ -112,8 +114,10 @@ More detail: [docs/CLI_AND_EXAMPLES.md](docs/CLI_AND_EXAMPLES.md).
 Commands:
 
 - `create-session` builds the complete scaffold bundle from a session config.
+- `validate-config` checks required fields, harness profile names, diagnostics, and foundation limits before bundle creation.
 - `consensus-report` runs a CI-ready Consensus Hardening report and exits nonzero if critical gates fail.
 - `export-schemas` writes JSON schemas for session configs, packet objects, and compact state.
+- `sign-bundle` writes a signed HMAC-SHA256 release-gate manifest for an existing bundle.
 
 Example session bundles live in:
 
@@ -197,6 +201,7 @@ write_scaffold_package(package, "./.cross-harness-runs/run-001")
 | `cross-harness/schema.sql` | Token-efficient event-store blueprint |
 | `cross-harness/harness_profiles.json` | Participating harness capabilities |
 | `cross-harness/consensus_hardening_review.md` | Local Consensus Hardening review report |
+| `cross-harness/bundle_manifest.json` | Release-gate manifest with artifact hashes and optional signature |
 
 The hot state stores hashes, summaries, participants, status, and diagnostics. Full packet bodies are stored once by content hash.
 
@@ -237,6 +242,8 @@ response = adapter.receive_response(session_id="run-001")
 ```
 
 `FileHarnessAdapter` is intentionally simple: it writes `inbox_packet.md` and reads `outbox_response.md`. Native adapters for Codex, Claude Code, Cursor, Copilot, Antigravity, GLM 5, DeepSeek, Qwen, and SuperServe can use the same interface.
+
+`CommandHarnessAdapter` supports selected local CLI harnesses where the permission boundary is explicit: no shell, packet on stdin, captured stdout, caller-owned command tuple, timeout, and byte cap. Built-in adapter specs document stable boundaries for file handoff, Codex CLI, Claude Code CLI, Aider CLI, and SuperServe execution.
 
 ## Built-In Aliases
 
@@ -319,23 +326,24 @@ The test suite covers:
 
 - requested harness profiles, including GLM 5, DeepSeek, and Qwen,
 - SuperServe as a Firecracker validation harness and execution backend seam,
+- native command adapter specs for selected harnesses,
 - alias resolution,
 - model parity,
 - payload envelopes,
 - Consensus Hardening review,
 - YAML/JSON session loading,
-- CLI bundle/report/schema commands,
+- CLI bundle/validate/report/schema/sign commands,
 - JSON schema exports,
+- signed release-gate manifests,
 - file-based adapter handoff,
 - token-efficient package output,
 - path traversal protection.
 
 ## Roadmap
 
-- Native live adapters for selected harnesses where APIs are stable and permission models are clear.
-- Schema validation command that validates a config before bundle creation.
-- GitHub Actions examples for `chs consensus-report`.
-- Signed bundle manifests for release-gate audit trails.
+- Native adapters for additional harnesses after their permission models stabilize.
+- Public-key signing option alongside current HMAC release-gate signatures.
+- Schema validation against exported JSON Schema when optional validator dependencies are installed.
 
 ## Repository Status
 
@@ -346,6 +354,6 @@ Current local state:
 - Python package scaffolded.
 - Tests passing.
 - Consensus Hardening review included.
-- CLI, schemas, adapters, and example session bundles included.
+- CLI, schemas, validation, adapters, signed manifests, and example session bundles included.
 - PostgreSQL, CockroachDB, SQLite, local execution, and SuperServe adapter seams included.
 - Published to Codeberg and GitHub mirrors where credentials are configured.

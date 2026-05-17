@@ -35,9 +35,26 @@ from .core import (
     write_scaffold_package,
 )
 from .execution import ExecutionRequest, ExecutionResult, LocalExecutionBackend, SuperserveBackend, SuperserveConfig
-from .adapters import FileHarnessAdapter, HarnessAdapterRegistry, HarnessAdapterResult
+from .adapters import (
+    CommandHarnessAdapter,
+    FileHarnessAdapter,
+    HarnessAdapterRegistry,
+    HarnessAdapterResult,
+    NativeAdapterSpec,
+    build_command_adapter,
+    native_adapter_specs,
+)
 from .schemas import export_json_schemas, schema_bundle
 from .session_config import load_session, session_from_mapping
+from .signing import (
+    MANIFEST_PATH,
+    attach_bundle_manifest,
+    build_bundle_manifest,
+    sign_bundle_manifest,
+    sign_scaffold_package,
+    verify_bundle_manifest_signature,
+    write_signed_directory_manifest,
+)
 from .storage import (
     CockroachStore,
     DatabaseConfig,
@@ -50,6 +67,7 @@ from .storage import (
     build_database_config,
     cockroach_retry_delays,
 )
+from .validation import ConfigValidationIssue, ConfigValidationResult, validate_session_config, validate_session_config_mapping
 
 __all__ = [
     "CANONICAL_PROTOCOL_NAME",
@@ -60,6 +78,8 @@ __all__ = [
     "CrossHarnessDossier",
     "CrossHarnessLayer",
     "CrossHarnessSession",
+    "ConfigValidationIssue",
+    "ConfigValidationResult",
     "FoundationAttack",
     "FoundationDisclosure",
     "HarnessProfile",
@@ -83,15 +103,20 @@ __all__ = [
     "payload_echo_confirmed",
     "run_consensus_hardening_review",
     "validate_payload_envelope",
+    "validate_session_config",
+    "validate_session_config_mapping",
     "write_scaffold_package",
     "CockroachStore",
     "DatabaseConfig",
     "ExecutionRequest",
     "ExecutionResult",
+    "CommandHarnessAdapter",
     "FileHarnessAdapter",
     "HarnessAdapterRegistry",
     "HarnessAdapterResult",
     "LocalExecutionBackend",
+    "MANIFEST_PATH",
+    "NativeAdapterSpec",
     "PayloadRecord",
     "PostgresStore",
     "RoundEventRecord",
@@ -100,10 +125,18 @@ __all__ = [
     "StorageResult",
     "SuperserveBackend",
     "SuperserveConfig",
+    "attach_bundle_manifest",
+    "build_bundle_manifest",
+    "build_command_adapter",
     "build_database_config",
     "cockroach_retry_delays",
     "export_json_schemas",
     "load_session",
+    "native_adapter_specs",
     "schema_bundle",
     "session_from_mapping",
+    "sign_bundle_manifest",
+    "sign_scaffold_package",
+    "verify_bundle_manifest_signature",
+    "write_signed_directory_manifest",
 ]

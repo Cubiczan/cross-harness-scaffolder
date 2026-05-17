@@ -1,0 +1,43 @@
+name: Consensus Hardening
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  consensus-hardening:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - examples/database_design.yaml
+          - examples/refactor_review.yaml
+          - examples/package_release.yaml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: python -m pip install -e ".[yaml]"
+
+      - name: Validate session config
+        run: chs validate-config --config "${{ matrix.config }}"
+
+      - name: Run Consensus Hardening report
+        run: chs consensus-report --config "${{ matrix.config }}" --output "chs-report.md"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chs-report-${{ strategy.job-index }}
+          path: chs-report.md

@@ -247,6 +247,7 @@ def test_scaffold_package_emits_handoff_bundle_without_hot_state_transcript_dupl
     assert "cross-harness/schema.sql" in paths
     assert "cross-harness/harness_profiles.json" in paths
     assert "cross-harness/consensus_hardening_review.md" in paths
+    assert "cross-harness/bundle_manifest.json" in paths
     assert package.total_token_estimate > 0
 
     state = next(artifact for artifact in package.artifacts if artifact.path.endswith("session_state.json"))
@@ -271,7 +272,7 @@ def test_write_scaffold_package_materializes_ascii_artifacts(tmp_path: Path) -> 
 
     written = write_scaffold_package(package, tmp_path)
 
-    assert len(written) == 8
+    assert len(written) == 9
     assert (tmp_path / "cross-harness" / "origin_packet.md").exists()
     for path in written:
         assert tmp_path.resolve() in path.resolve().parents

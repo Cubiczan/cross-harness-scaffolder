@@ -79,3 +79,12 @@ The adapter expects the client to expose:
 ## Design Rule
 
 The core package stays dependency-light. Database drivers and sandbox SDKs are optional, while interfaces, schemas, and deterministic tests remain available everywhere.
+
+## Live Harness Adapters
+
+The live adapter layer starts with two stable permission boundaries:
+
+- `FileHarnessAdapter`: plain-file handoff for any harness that can read `inbox_packet.md` and write `outbox_response.md`.
+- `CommandHarnessAdapter`: local CLI process handoff for selected harnesses where command execution is explicit, non-shell, timeout-bound, and stdout-captured.
+
+The initial native adapter specs cover file handoff, Codex CLI, Claude Code CLI, Aider CLI, and SuperServe execution. Additional harness adapters should only be promoted when their API surface and approval model are stable enough to audit.

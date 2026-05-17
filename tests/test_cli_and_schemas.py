@@ -1,13 +1,20 @@
 import json
+import sys
 from pathlib import Path
 
 from cross_harness_scaffolder import (
+    CommandHarnessAdapter,
     FileHarnessAdapter,
     HarnessAdapterRegistry,
+    build_scaffold_package,
     export_json_schemas,
     get_harness_profile,
     load_session,
+    native_adapter_specs,
     schema_bundle,
+    sign_scaffold_package,
+    validate_session_config,
+    verify_bundle_manifest_signature,
 )
 from cross_harness_scaffolder.cli import main
 
@@ -60,9 +67,62 @@ def test_cli_create_session_and_consensus_report(tmp_path: Path) -> None:
 
     assert main(["create-session", "--config", str(config), "--out", str(out), "--payload-id", "ABC123"]) == 0
     assert (out / "cross-harness" / "origin_packet.md").exists()
+    assert (out / "cross-harness" / "bundle_manifest.json").exists()
 
     assert main(["consensus-report", "--config", str(config), "--output", str(report)]) == 0
     assert "Verdict: PASS" in report.read_text(encoding="ascii")
+
+
+def test_cli_validate_config_and_reject_invalid_config(tmp_path: Path) -> None:
+    config = _config(tmp_path / "session.json")
+    invalid = tmp_path / "invalid.json"
+    invalid.write_text(json.dumps({"title": "bad"}), encoding="ascii")
+
+    assert main(["validate-config", "--config", str(config)]) == 0
+    assert main(["validate-config", "--config", str(invalid), "--format", "json"]) == 1
+    assert not validate_session_config(invalid).ok
+
+
+def test_cli_create_session_with_signed_manifest(tmp_path: Path, monkeypatch) -> None:
+    config = _config(tmp_path / "session.json")
+    out = tmp_path / "signed-bundle"
+    monkeypatch.setenv("CHS_TEST_SIGNING_KEY", "secret")
+
+    assert (
+        main(
+            [
+                "create-session",
+                "--config",
+                str(config),
+                "--out",
+                str(out),
+                "--payload-id",
+                "ABC123",
+                "--signing-key-env",
+                "CHS_TEST_SIGNING_KEY",
+                "--key-id",
+                "test-key",
+            ]
+        )
+        == 0
+    )
+
+    manifest = json.loads((out / "cross-harness" / "bundle_manifest.json").read_text(encoding="ascii"))
+    assert manifest["signature"]["key_id"] == "test-key"
+    assert verify_bundle_manifest_signature(manifest, "secret")
+
+
+def test_cli_sign_bundle_command(tmp_path: Path, monkeypatch) -> None:
+    config = _config(tmp_path / "session.json")
+    out = tmp_path / "bundle"
+    monkeypatch.setenv("CHS_SIGNING_KEY", "secret")
+
+    assert main(["create-session", "--config", str(config), "--out", str(out), "--payload-id", "ABC123"]) == 0
+    assert main(["sign-bundle", "--bundle", str(out / "cross-harness"), "--key-id", "release-key"]) == 0
+
+    manifest = json.loads((out / "cross-harness" / "bundle_manifest.json").read_text(encoding="ascii"))
+    assert manifest["signature"]["key_id"] == "release-key"
+    assert verify_bundle_manifest_signature(manifest, "secret")
 
 
 def test_cli_export_schemas(tmp_path: Path) -> None:
@@ -92,6 +152,29 @@ def test_file_harness_adapter_round_trip(tmp_path: Path) -> None:
     assert adapter.receive_response(session_id="session-1") == "response"
 
 
+def test_command_harness_adapter_round_trip() -> None:
+    adapter = CommandHarnessAdapter(
+        get_harness_profile("codex"),
+        (
+            sys.executable,
+            "-c",
+            "import sys; print(sys.stdin.read().upper())",
+        ),
+    )
+
+    result = adapter.send_packet("payload", session_id="session-1")
+
+    assert result.ok
+    assert adapter.receive_response(session_id="session-1").strip() == "PAYLOAD"
+
+
+def test_native_adapter_specs_name_permission_boundaries() -> None:
+    specs = {spec.name: spec for spec in native_adapter_specs()}
+
+    assert {"file-handoff", "codex-cli", "claude-code-cli", "aider-cli", "superserve-execution"} <= set(specs)
+    assert "explicit local command tuple" in specs["codex-cli"].permission_boundary
+
+
 def test_adapter_registry() -> None:
     registry = HarnessAdapterRegistry()
     adapter = FileHarnessAdapter(get_harness_profile("codex"), ".")
@@ -100,3 +183,12 @@ def test_adapter_registry() -> None:
 
     assert registry.names() == ("codex",)
     assert registry.get("CODEX") is adapter
+
+
+def test_sign_scaffold_package_verifies_manifest(tmp_path: Path) -> None:
+    session = load_session(_config(tmp_path / "session.json"))
+    package = sign_scaffold_package(build_scaffold_package(session, payload_id="ABC123"), "secret", key_id="unit")
+    manifest = json.loads(next(item for item in package.artifacts if item.path.endswith("bundle_manifest.json")).content)
+
+    assert manifest["artifact_count"] == 8
+    assert verify_bundle_manifest_signature(manifest, "secret")

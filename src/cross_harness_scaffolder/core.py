@@ -1402,7 +1402,10 @@ def build_scaffold_package(session: CrossHarnessSession, *, payload_id: str | No
         ScaffoldArtifact("cross-harness/harness_profiles.json", "participant harness capabilities", harness_profiles),
         ScaffoldArtifact("cross-harness/consensus_hardening_review.md", "CHP validation report", review),
     )
-    return ScaffoldPackage(artifacts=artifacts)
+    package = ScaffoldPackage(artifacts=artifacts)
+    from .signing import attach_bundle_manifest
+
+    return attach_bundle_manifest(package)
 
 
 def write_scaffold_package(package: ScaffoldPackage, root: str | Path) -> tuple[Path, ...]:
