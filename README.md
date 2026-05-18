@@ -103,6 +103,37 @@ Run tests:
 python -m pytest -q
 ```
 
+## Native Rust Core
+
+This repo now includes a first-class Rust core at `crates/chs-core`. The Python package remains the broad integration surface, while the Rust crate owns deterministic, audit-sensitive primitives:
+
+- session config parsing for YAML and JSON,
+- config validation and CI-safe consensus reports,
+- payload envelope validation,
+- compact session state hashing,
+- content-addressed bundle manifests,
+- HMAC release-gate signatures,
+- signed manifest transparency log entries.
+
+Rust audit gate:
+
+```bash
+cargo fmt -- --check
+cargo clippy --locked --all-targets -p chs-core -- -D warnings
+cargo test --locked -p chs-core
+cargo build --release --locked -p chs-core
+```
+
+Rust CLI smoke:
+
+```bash
+cargo run -p chs-core -- validate-config examples/database_design.yaml
+cargo run -p chs-core -- consensus-report examples/database_design.yaml CI0001
+CHS_SIGNING_KEY="change-me" cargo run -p chs-core -- sign-directory .cross-harness-runs/database-design/cross-harness .cross-harness-runs/database-design/cross-harness/bundle_manifest.json local-release
+```
+
+Secrets stay runtime-only. The Rust signing path accepts HMAC material from the caller, usually via `CHS_SIGNING_KEY`, and does not read or commit credentials.
+
 ## CLI
 
 The package installs a `chs` command for repeatable runs from YAML or JSON:

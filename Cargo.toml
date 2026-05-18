@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["crates/chs-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Cubiczan"]
+license = "MIT"
+repository = "https://codeberg.org/cubiczan/cross-harness-scaffolder"
+description = "Native Rust core for consensus-hardened cross-harness scaffolding"
+
+[workspace.dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+hex = "0.4"
+hmac = "0.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+sha2 = "0.10"
+thiserror = "2"

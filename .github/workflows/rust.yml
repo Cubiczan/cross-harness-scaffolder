@@ -1,0 +1,28 @@
+name: Rust Core
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  chs-core:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust components
+        run: rustup component add rustfmt clippy
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run strict clippy
+        run: cargo clippy --locked --all-targets -p chs-core -- -D warnings
+
+      - name: Run tests
+        run: cargo test --locked -p chs-core
+
+      - name: Build release
+        run: cargo build --release --locked -p chs-core
