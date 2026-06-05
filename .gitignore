@@ -10,3 +10,6 @@ dist/
 build/
 *.egg-info/
 .cross-harness-runs/
+.env
+.env.local
+.env.*
